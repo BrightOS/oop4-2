@@ -1,39 +1,25 @@
 package ru.brightos.oop42
 
+import android.content.SharedPreferences
 import android.os.Bundle
-import android.view.KeyEvent
 import android.view.inputmethod.EditorInfo
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
-import androidx.core.widget.addTextChangedListener
-import androidx.core.widget.doAfterTextChanged
-import androidx.core.widget.doBeforeTextChanged
-import androidx.core.widget.doOnTextChanged
+import com.google.android.material.slider.LabelFormatter
 import ru.brightos.oop42.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
 
-    var prevString = ""
+    lateinit var sharedPreferences: SharedPreferences
+    lateinit var model: Model
 
-    val model = Model(object : OnModelChangedListener {
-        override fun onModelChanged(a: Int, b: Int, c: Int) {
-            println("$a$b$c")
-
-            binding.aEditText.setText(a.toString())
-            binding.bEditText.setText(b.toString())
-            binding.cEditText.setText(c.toString())
-
-            binding.aSlider.value = a.toFloat() / 100
-            binding.bSlider.value = b.toFloat() / 100
-            binding.cSlider.value = c.toFloat() / 100
-
-            binding.aNumberPicker.value = a
-            binding.bNumberPicker.value = b
-            binding.cNumberPicker.value = c
+    val labelFormatter = object : LabelFormatter {
+        override fun getFormattedValue(value: Float): String {
+            return (value * 100).toInt().toString()
         }
-    })
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -42,6 +28,25 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        if (this::model.isInitialized.not())
+            model = Model(
+                onModelChangedListener = object : OnModelChangedListener {
+                    override fun onModelChanged(a: Int, b: Int, c: Int) {
+                        binding.aEditText.setText(a.toString())
+                        binding.bEditText.setText(b.toString())
+                        binding.cEditText.setText(c.toString())
+
+                        binding.aSlider.value = a.toFloat() / 100
+                        binding.bSlider.value = b.toFloat() / 100
+                        binding.cSlider.value = c.toFloat() / 100
+
+                        binding.aNumberPicker.value = a
+                        binding.bNumberPicker.value = b
+                        binding.cNumberPicker.value = c
+                    }
+                },
+                sharedPreferences = getSharedPreferences("oop42_preferences", MODE_PRIVATE)
+            )
         model.onModelChangedListener.onModelChanged(model.a, model.b, model.c)
 
         binding.aNumberPicker.apply {
@@ -56,6 +61,10 @@ class MainActivity : AppCompatActivity() {
             maxValue = 100
             minValue = 0
         }
+
+        binding.aSlider.setLabelFormatter(labelFormatter)
+        binding.bSlider.setLabelFormatter(labelFormatter)
+        binding.cSlider.setLabelFormatter(labelFormatter)
 
         binding.aEditText.setOnEditorActionListener { v, actionId, event ->
             if (actionId == EditorInfo.IME_ACTION_DONE) {
@@ -95,16 +104,27 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.aNumberPicker.setOnValueChangedListener { picker, oldVal, newVal ->
-
-            model.a = newVal
+            println("Picker value $newVal")
+            model.a = picker.value
         }
-        binding.aNumberPicker.setOnValueChangedListener { picker, oldVal, newVal ->
-
-            model.b = newVal
+        binding.bNumberPicker.setOnValueChangedListener { picker, oldVal, newVal ->
+            model.b = picker.value
         }
-        binding.aNumberPicker.setOnValueChangedListener { picker, oldVal, newVal ->
-
-            model.c = newVal
+        binding.cNumberPicker.setOnValueChangedListener { picker, oldVal, newVal ->
+            model.c = picker.value
         }
     }
+
+    override fun onResume() {
+        super.onResume()
+        println("onResume")
+    }
+
+    override fun onPause() {
+        println("onPause")
+        model.saveState()
+        super.onPause()
+    }
+
+
 }
